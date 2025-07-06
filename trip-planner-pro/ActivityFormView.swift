@@ -185,7 +185,10 @@ struct ActivityFormView: View {
     }
     
     private var canSave: Bool {
-        !name.isEmpty && startTime <= endTime && selectedCity != nil && selectedPOI != nil
+        !name.isEmpty && startTime <= endTime &&
+        selectedCity != nil && selectedPOI != nil &&
+        (selectedCity == nil || trip.cities.contains(where: { $0.id == selectedCity!.id })) &&
+        ActivityCategory.allCases.contains(category)
     }
     
     private func setupInitialValues() {
@@ -239,7 +242,19 @@ struct ActivityFormView: View {
         Task {
             do {
                 guard let selectedCity = selectedCity else {
-                    errorMessage = "Please select a city"
+                    errorMessage = "Please select a city."
+                    isSaving = false
+                    return
+                }
+                // Defensive: Ensure city is in trip.cities
+                guard trip.cities.contains(where: { $0.id == selectedCity.id }) else {
+                    errorMessage = "Selected city is not valid for this trip."
+                    isSaving = false
+                    return
+                }
+                // Defensive: Ensure category is valid
+                guard ActivityCategory.allCases.contains(category) else {
+                    errorMessage = "Selected category is not valid."
                     isSaving = false
                     return
                 }

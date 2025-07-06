@@ -249,7 +249,28 @@ struct TripResponse: Codable {
         let updatedAt = isoFormatter.date(from: self.updatedAt) ?? Date()
         
         let cities = mapLocations?.compactMap { $0.toMapLocation() } ?? []
-        let activities = self.activities?.compactMap { $0.toActivity(tripId: UUID(uuidString: id) ?? UUID(), cities: cities) } ?? []
+        print("Found \(cities.count) cities for trip \(name)")
+        print("Trip city IDs: \(cities.map { $0.id.uuidString })")
+        
+        let activities: [Activity] = self.activities?.compactMap { activityResponse in
+            print("\n--- Activity Debug ---")
+            print("Activity name: \(activityResponse.name)")
+            print("Activity cityId: \(activityResponse.cityId)")
+            print("Activity category: \(activityResponse.category)")
+            print("All enum categories: \(ActivityCategory.allCases.map { $0.rawValue })")
+            guard let activity = activityResponse.toActivity(tripId: UUID(uuidString: id) ?? UUID(), cities: cities) else {
+                print("Failed to convert activity: \(activityResponse.name)")
+                print("  Date: \(activityResponse.date)")
+                print("  Start Time: \(activityResponse.startTime)")
+                print("  End Time: \(activityResponse.endTime)")
+                print("  City ID: \(activityResponse.cityId)")
+                return nil
+            }
+            print("Successfully converted activity: \(activity.name)")
+            return activity
+        } ?? []
+        
+        print("Trip \(name) has \(activities.count) activities")
         
         return Trip(
             id: UUID(uuidString: id) ?? UUID(),
@@ -340,8 +361,13 @@ struct ActivityResponse: Codable {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         
+        print("[toActivity] cities passed in: \(cities.map { $0.id.uuidString })")
+        print("[toActivity] cityId to match: \(cityId)")
+        print("[toActivity] category to match: \(category)")
+        print("[toActivity] all enum categories: \(ActivityCategory.allCases.map { $0.rawValue })")
+        
         guard let date = dateFormatter.date(from: self.date),
-              let city = cities.first(where: { $0.id.uuidString == cityId }),
+              let city = cities.first(where: { $0.id.uuidString.lowercased() == cityId.lowercased() }),
               let activityCategory = ActivityCategory(rawValue: category) else {
             print("Failed to convert activity: \(name)")
             print("  - Date parsing failed: '\(self.date)'")
