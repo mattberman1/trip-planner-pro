@@ -340,14 +340,35 @@ struct ActivityResponse: Codable {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         
+        guard let date = dateFormatter.date(from: self.date),
+              let city = cities.first(where: { $0.id.uuidString == cityId }),
+              let activityCategory = ActivityCategory(rawValue: category) else {
+            print("Failed to convert activity: \(name)")
+            print("  - Date parsing failed: '\(self.date)'")
+            print("  - City not found for ID: \(cityId)")
+            print("  - Category not found: '\(category)'")
+            return nil
+        }
+        
+        // Parse time strings and combine with the activity date
         let timeFormatter = DateFormatter()
         timeFormatter.dateFormat = "HH:mm:ss"
         
-        guard let date = dateFormatter.date(from: self.date),
-              let startTime = timeFormatter.date(from: self.startTime),
-              let endTime = timeFormatter.date(from: self.endTime),
-              let city = cities.first(where: { $0.id.uuidString == cityId }),
-              let activityCategory = ActivityCategory(rawValue: category) else {
+        // Create start time by combining date and time
+        let startTimeString = "\(self.date) \(self.startTime)"
+        let startTimeFormatter = DateFormatter()
+        startTimeFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        
+        // Create end time by combining date and time
+        let endTimeString = "\(self.date) \(self.endTime)"
+        let endTimeFormatter = DateFormatter()
+        endTimeFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        
+        guard let startTime = startTimeFormatter.date(from: startTimeString),
+              let endTime = endTimeFormatter.date(from: endTimeString) else {
+            print("Failed to parse times for activity: \(name)")
+            print("  - Start time string: '\(startTimeString)'")
+            print("  - End time string: '\(endTimeString)'")
             return nil
         }
         
@@ -355,6 +376,8 @@ struct ActivityResponse: Codable {
         let isoFormatter = ISO8601DateFormatter()
         let createdAt = isoFormatter.date(from: self.createdAt) ?? Date()
         let updatedAt = isoFormatter.date(from: self.updatedAt) ?? Date()
+        
+        print("Successfully converted activity: \(name)")
         
         return Activity(
             id: UUID(uuidString: id) ?? UUID(),
