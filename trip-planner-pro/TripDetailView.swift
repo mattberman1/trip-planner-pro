@@ -9,45 +9,58 @@ import SwiftUI
 import MapKit
 
 struct TripDetailView: View {
-    let trip: Trip
+    let tripId: UUID
     @ObservedObject var dataService: SupabaseDataService
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
     @State private var showingActivityForm = false
     @State private var selectedActivity: Activity?
     
+    private var trip: Trip? {
+        dataService.trips.first { $0.id == tripId }
+    }
+    
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Trip Header
-                tripHeader
-                
-                // Trip Details
-                tripDetailsSection
-                
-                // Cities Section
-                citiesSection
-                
-                // Activities Section
-                activitiesSection
-                
-                Spacer(minLength: 100)
+        Group {
+            if let trip = trip {
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Trip Header
+                        tripHeader(trip)
+                        
+                        // Trip Details
+                        tripDetailsSection(trip)
+                        
+                        // Cities Section
+                        citiesSection(trip)
+                        
+                        // Activities Section
+                        activitiesSection(trip)
+                        
+                        Spacer(minLength: 100)
+                    }
+                    .padding()
+                }
+            } else {
+                ProgressView("Loading trip...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding()
         }
         .navigationTitle("Trip Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button("Edit Trip") {
-                        showingEditSheet = true
+            if let trip = trip {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button("Edit Trip") {
+                            showingEditSheet = true
+                        }
+                        Button("Delete Trip", role: .destructive) {
+                            showingDeleteAlert = true
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
-                    Button("Delete Trip", role: .destructive) {
-                        showingDeleteAlert = true
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
                 }
             }
         }
@@ -65,11 +78,13 @@ struct TripDetailView: View {
                 }
         }
         .sheet(isPresented: $showingActivityForm) {
-            ActivityFormView(
-                trip: trip,
-                activity: selectedActivity,
-                dataService: dataService
-            )
+            if let trip = trip {
+                ActivityFormView(
+                    trip: trip,
+                    activity: selectedActivity,
+                    dataService: dataService
+                )
+            }
         }
         .alert("Delete Trip", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
@@ -77,13 +92,15 @@ struct TripDetailView: View {
                 deleteTrip()
             }
         } message: {
-            Text("Are you sure you want to delete '\(trip.name)'? This action cannot be undone.")
+            if let trip = trip {
+                Text("Are you sure you want to delete '\(trip.name)'? This action cannot be undone.")
+            }
         }
     }
     
     // MARK: - Trip Header
     
-    private var tripHeader: some View {
+    private func tripHeader(_ trip: Trip) -> some View {
         VStack(spacing: 12) {
             Text(trip.name)
                 .font(.largeTitle)
@@ -93,7 +110,7 @@ struct TripDetailView: View {
             HStack {
                 Image(systemName: "calendar")
                     .foregroundColor(.blue)
-                Text(dateRangeText)
+                Text(dateRangeText(trip))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -115,7 +132,7 @@ struct TripDetailView: View {
     
     // MARK: - Trip Details Section
     
-    private var tripDetailsSection: some View {
+    private func tripDetailsSection(_ trip: Trip) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Trip Details")
                 .font(.headline)
@@ -123,7 +140,7 @@ struct TripDetailView: View {
             VStack(spacing: 12) {
                 detailRow(icon: "calendar.badge.clock", title: "Start Date", value: formatDate(trip.startDate))
                 detailRow(icon: "calendar.badge.clock", title: "End Date", value: formatDate(trip.endDate))
-                detailRow(icon: "clock", title: "Duration", value: durationText)
+                detailRow(icon: "clock", title: "Duration", value: durationText(trip))
                 detailRow(icon: "mappin.and.ellipse", title: "Cities", value: "\(trip.cities.count) cities")
                 detailRow(icon: "list.bullet", title: "Activities", value: "\(trip.activities.count) activities")
             }
@@ -136,7 +153,7 @@ struct TripDetailView: View {
     
     // MARK: - Cities Section
     
-    private var citiesSection: some View {
+    private func citiesSection(_ trip: Trip) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("Cities")
@@ -172,7 +189,7 @@ struct TripDetailView: View {
     
     // MARK: - Activities Section
     
-    private var activitiesSection: some View {
+    private func activitiesSection(_ trip: Trip) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("Activities")
@@ -317,13 +334,13 @@ struct TripDetailView: View {
     
     // MARK: - Helper Methods
     
-    private var dateRangeText: String {
+    private func dateRangeText(_ trip: Trip) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         return "\(formatter.string(from: trip.startDate)) - \(formatter.string(from: trip.endDate))"
     }
     
-    private var durationText: String {
+    private func durationText(_ trip: Trip) -> String {
         let calendar = Calendar.current
         let days = calendar.dateComponents([.day], from: trip.startDate, to: trip.endDate).day ?? 0
         return "\(days + 1) day\(days == 0 ? "" : "s")"
@@ -366,6 +383,8 @@ struct TripDetailView: View {
     
     private func deleteTrip() {
         // TODO: Implement delete functionality
-        print("Delete trip: \(trip.id)")
+        if let trip = trip {
+            print("Delete trip: \(trip.id)")
+        }
     }
 } 

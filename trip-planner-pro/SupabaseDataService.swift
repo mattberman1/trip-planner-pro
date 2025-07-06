@@ -33,6 +33,7 @@ public class SupabaseDataService: ObservableObject {
         errorMessage = nil
         
         do {
+            print("Fetching trips from Supabase...")
             let response: [TripResponse] = try await client
                 .from("trips")
                 .select("""
@@ -45,6 +46,19 @@ public class SupabaseDataService: ObservableObject {
                 .value
             
             print("Fetched \(response.count) trips from Supabase")
+            
+            // Debug: Print raw response data
+            for (index, tripResponse) in response.enumerated() {
+                print("Trip \(index):")
+                print("  ID: \(tripResponse.id)")
+                print("  Name: \(tripResponse.name)")
+                print("  Start Date: \(tripResponse.startDate)")
+                print("  End Date: \(tripResponse.endDate)")
+                print("  Created At: \(tripResponse.createdAt)")
+                print("  Updated At: \(tripResponse.updatedAt)")
+                print("  Map Locations: \(tripResponse.mapLocations?.count ?? 0)")
+                print("  Activities: \(tripResponse.activities?.count ?? 0)")
+            }
             
             trips = response.compactMap { tripResponse in
                 guard let trip = tripResponse.toTrip() else {
@@ -71,6 +85,7 @@ public class SupabaseDataService: ObservableObject {
         } catch {
             errorMessage = "Failed to fetch trips: \(error.localizedDescription)"
             print("Error fetching trips: \(error)")
+            print("Error details: \(error)")
         }
         
         isLoading = false
@@ -214,8 +229,17 @@ struct TripResponse: Codable {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         
-        guard let startDate = dateFormatter.date(from: startDate),
-              let endDate = dateFormatter.date(from: endDate) else {
+        // Debug date parsing
+        print("Parsing start date: '\(startDate)'")
+        print("Parsing end date: '\(endDate)'")
+        
+        guard let startDate = dateFormatter.date(from: startDate) else {
+            print("Failed to parse start date: '\(startDate)'")
+            return nil
+        }
+        
+        guard let endDate = dateFormatter.date(from: endDate) else {
+            print("Failed to parse end date: '\(endDate)'")
             return nil
         }
         
@@ -292,6 +316,25 @@ struct ActivityResponse: Codable {
     let isAddedToCalendar: Bool
     let createdAt: String
     let updatedAt: String
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case tripId = "trip_id"
+        case name
+        case date
+        case startTime = "start_time"
+        case endTime = "end_time"
+        case cityId = "city_id"
+        case poiName = "poi_name"
+        case poiAddress = "poi_address"
+        case poiLatitude = "poi_latitude"
+        case poiLongitude = "poi_longitude"
+        case category
+        case notes
+        case isAddedToCalendar = "is_added_to_calendar"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
     
     func toActivity(tripId: UUID, cities: [MapLocation]) -> Activity? {
         let dateFormatter = DateFormatter()

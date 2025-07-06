@@ -46,7 +46,7 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List(dataService.trips) { trip in
-                        NavigationLink(destination: TripDetailView(trip: trip, dataService: dataService)) {
+                        NavigationLink(destination: TripDetailView(tripId: trip.id, dataService: dataService)) {
                             tripRow(trip)
                         }
                     }
